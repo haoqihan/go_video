@@ -136,7 +136,7 @@ func AddNewComments(vid string, aid int, content string) error {
 }
 
 
-// 查看全部评论
+// 查看全部评论1
 func ListComments(vid string, from, to int) ([]*defs.Comment, error) {
 	stmtOut, err := dbConn.Prepare(`select  comments.id users.Login_name,comments.content
 									from comments inner join users on comments.author_id = users.id
