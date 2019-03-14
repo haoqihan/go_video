@@ -2,6 +2,7 @@ package dbops
 
 import (
 	"database/sql"
+	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"log"
 	"time"
@@ -22,7 +23,7 @@ func AddUserCredential(loginName string, pwd string) error {
 
 }
 
-// 获取用户
+// 获取用户信息
 func GetUserCredential(loginName string) (string, error) {
 	stmtOut, err := dbConn.Prepare("SELECT pwd FROM  users where login_name = ? ")
 	if err != nil {
@@ -37,6 +38,27 @@ func GetUserCredential(loginName string) (string, error) {
 	defer stmtOut.Close()
 
 	return pwd, nil
+}
+
+// 获取用户
+func GetUser(loginName string)(*defs.User,error){
+	stmtOut, err := dbConn.Prepare("select id,pwd from users where login_name=?")
+	if err != nil{
+		log.Printf("%s",err)
+		return nil,err
+	}
+	var id int
+	var pwd string
+	err = stmtOut.QueryRow(loginName).Scan(&id,&pwd)
+	if err != nil && err != sql.ErrNoRows{
+		return nil,err
+	}
+	if err == sql.ErrNoRows{
+		return nil,nil
+	}
+	res := &defs.User{Id:id,LoginName:loginName,Pwd:pwd}
+	defer stmtOut.Close()
+	return res,nil
 }
 
 // 删除用户
@@ -115,8 +137,7 @@ func DeleteVideoInfo(vid string) error {
 	return nil
 }
 
-//
-//// 添加评论
+// 添加评论
 func AddNewComments(vid string, aid int, content string) error {
 	id, err := utils.NewUUID()
 	if err != nil {
@@ -135,12 +156,12 @@ func AddNewComments(vid string, aid int, content string) error {
 	return nil
 }
 
-
-// 查看全部评论1
+// 查看全部评论
 func ListComments(vid string, from, to int) ([]*defs.Comment, error) {
-	stmtOut, err := dbConn.Prepare(`select  comments.id users.Login_name,comments.content
-									from comments inner join users on comments.author_id = users.id
-									where comments.video_id = ? and comments.ctime > from_unixtime(?) and comments.time <= from_unixtime(?)`)
+	stmtOut, err := dbConn.Prepare(`SELECT  comments.id,users.Login_name,comments.content FROM comments
+									inner join users on comments.author_id = users.id
+									where comments.video_id = ? and comments.time > FROM_UNIXTIME(?) and comments.time <= FROM_UNIXTIME(?)`)
+
 	var res []*defs.Comment
 	rows, err := stmtOut.Query(vid, from, to)
 	if err != nil {
@@ -155,7 +176,53 @@ func ListComments(vid string, from, to int) ([]*defs.Comment, error) {
 		res = append(res, c)
 	}
 	defer stmtOut.Close()
-
+	fmt.Println(res)
 	return res, nil
-
 }
+
+// 所有视频
+func ListVideoInfo(uname string,from,to int )([]*defs.VideoInfo,error){
+	stmtOut, err := dbConn.Prepare(`select  video_info.id,video_info.author_id,video_info.name,video_info.display_ctime from video_info
+											INNER join users ON video_info.author_id=users.id where users.login_name=? and video_info,create_time>from_unixtime(?) and 
+											video_info.create_time<= from_unixtime(?) order by video_info.create_time DESC `)
+	var res []*defs.VideoInfo
+	if err != nil{
+		return res,err
+	}
+	rows,err := stmtOut.Query(uname,from,to)
+	if err != nil{
+		return res,err
+	}
+	for rows.Next(){
+		var id,name,ctime string
+		var aid int
+		if err := rows.Scan(&id,&aid,&name,&ctime);err != nil{
+			return res,err
+		}
+		vi := &defs.VideoInfo{Id:id,AuthorId:aid,Name:name,DisplayCtime:ctime}
+		res = append(res,vi)
+
+	}
+	defer stmtOut.Close()
+	return res,nil
+}
+
+//func DeleteVideoInfo(vid string) error{
+//	stmtDel, err := dbConn.Prepare("delete from video_info where id = ?")
+//	if err != nil{
+//		return err
+//	}
+//	_,err = stmtDel.Exec(vid)
+//	if err != nil{
+//		return err
+//	}
+//	defer stmtDel.Close()
+//	return nil
+//}
+//
+//func AddNewComments(vid string,aid int,content string)error{
+//
+//}
+
+
+
