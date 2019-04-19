@@ -10,4 +10,4 @@ nohup ./schduler &
 nohup ./streamserver &
 nohup ./web &
 
-echo "deploy finished"
+echo "deploy finished 66666"
